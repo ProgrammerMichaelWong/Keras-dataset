@@ -1,0 +1,687 @@
+{
+  "nbformat": 4,
+  "nbformat_minor": 0,
+  "metadata": {
+    "colab": {
+      "name": "IMDB in keras_v2.ipynb",
+      "provenance": [],
+      "collapsed_sections": []
+    },
+    "kernelspec": {
+      "name": "python3",
+      "display_name": "Python 3"
+    },
+    "accelerator": "GPU"
+  },
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "w9e23DITKxxN",
+        "colab_type": "text"
+      },
+      "source": [
+        "Firstly, we import the library needed.\n"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "GqYJJLwf83I7",
+        "colab_type": "code",
+        "outputId": "1de723ac-63dc-42a3-e986-11e690a3854c",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 97
+        }
+      },
+      "source": [
+        "from keras.layers import Dense, LSTM, Dropout, BatchNormalization, Embedding, Conv1D, MaxPooling1D, Bidirectional\n",
+        "from keras.models import Sequential\n",
+        "from keras.datasets import imdb\n",
+        "from keras.optimizers import Adam\n",
+        "from keras.losses import binary_crossentropy\n",
+        "from keras.callbacks import EarlyStopping, ReduceLROnPlateau\n",
+        "from keras.preprocessing.sequence import pad_sequences\n",
+        "import matplotlib.pyplot as plt\n",
+        "import pandas as pd\n",
+        "import numpy as np"
+      ],
+      "execution_count": 0,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "text": [
+            "Using TensorFlow backend.\n"
+          ],
+          "name": "stderr"
+        },
+        {
+          "output_type": "display_data",
+          "data": {
+            "text/html": [
+              "<p style=\"color: red;\">\n",
+              "The default version of TensorFlow in Colab will soon switch to TensorFlow 2.x.<br>\n",
+              "We recommend you <a href=\"https://www.tensorflow.org/guide/migrate\" target=\"_blank\">upgrade</a> now \n",
+              "or ensure your notebook will continue to use TensorFlow 1.x via the <code>%tensorflow_version 1.x</code> magic:\n",
+              "<a href=\"https://colab.research.google.com/notebooks/tensorflow_version.ipynb\" target=\"_blank\">more info</a>.</p>\n"
+            ],
+            "text/plain": [
+              "<IPython.core.display.HTML object>"
+            ]
+          },
+          "metadata": {
+            "tags": []
+          }
+        }
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "wU1dbjmaLK71",
+        "colab_type": "text"
+      },
+      "source": [
+        "The imdb dataset is then loaded"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "mKSTuQFR86WK",
+        "colab_type": "code",
+        "outputId": "d92a3219-b756-486a-8019-7056173abb46",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 51
+        }
+      },
+      "source": [
+        "(X_train, y_train), (X_test, y_test) = imdb.load_data()"
+      ],
+      "execution_count": 0,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "text": [
+            "Downloading data from https://s3.amazonaws.com/text-datasets/imdb.npz\n",
+            "17465344/17464789 [==============================] - 2s 0us/step\n"
+          ],
+          "name": "stdout"
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "K_SoooKg9VYA",
+        "colab_type": "code",
+        "outputId": "4ec0c376-17a1-4ce2-ab11-e4d63bd9a0d9",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 139
+        }
+      },
+      "source": [
+        "X_train[:5]"
+      ],
+      "execution_count": 0,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": [
+              "array([list([1, 14, 22, 16, 43, 530, 973, 1622, 1385, 65, 458, 4468, 66, 3941, 4, 173, 36, 256, 5, 25, 100, 43, 838, 112, 50, 670, 22665, 9, 35, 480, 284, 5, 150, 4, 172, 112, 167, 21631, 336, 385, 39, 4, 172, 4536, 1111, 17, 546, 38, 13, 447, 4, 192, 50, 16, 6, 147, 2025, 19, 14, 22, 4, 1920, 4613, 469, 4, 22, 71, 87, 12, 16, 43, 530, 38, 76, 15, 13, 1247, 4, 22, 17, 515, 17, 12, 16, 626, 18, 19193, 5, 62, 386, 12, 8, 316, 8, 106, 5, 4, 2223, 5244, 16, 480, 66, 3785, 33, 4, 130, 12, 16, 38, 619, 5, 25, 124, 51, 36, 135, 48, 25, 1415, 33, 6, 22, 12, 215, 28, 77, 52, 5, 14, 407, 16, 82, 10311, 8, 4, 107, 117, 5952, 15, 256, 4, 31050, 7, 3766, 5, 723, 36, 71, 43, 530, 476, 26, 400, 317, 46, 7, 4, 12118, 1029, 13, 104, 88, 4, 381, 15, 297, 98, 32, 2071, 56, 26, 141, 6, 194, 7486, 18, 4, 226, 22, 21, 134, 476, 26, 480, 5, 144, 30, 5535, 18, 51, 36, 28, 224, 92, 25, 104, 4, 226, 65, 16, 38, 1334, 88, 12, 16, 283, 5, 16, 4472, 113, 103, 32, 15, 16, 5345, 19, 178, 32]),\n",
+              "       list([1, 194, 1153, 194, 8255, 78, 228, 5, 6, 1463, 4369, 5012, 134, 26, 4, 715, 8, 118, 1634, 14, 394, 20, 13, 119, 954, 189, 102, 5, 207, 110, 3103, 21, 14, 69, 188, 8, 30, 23, 7, 4, 249, 126, 93, 4, 114, 9, 2300, 1523, 5, 647, 4, 116, 9, 35, 8163, 4, 229, 9, 340, 1322, 4, 118, 9, 4, 130, 4901, 19, 4, 1002, 5, 89, 29, 952, 46, 37, 4, 455, 9, 45, 43, 38, 1543, 1905, 398, 4, 1649, 26, 6853, 5, 163, 11, 3215, 10156, 4, 1153, 9, 194, 775, 7, 8255, 11596, 349, 2637, 148, 605, 15358, 8003, 15, 123, 125, 68, 23141, 6853, 15, 349, 165, 4362, 98, 5, 4, 228, 9, 43, 36893, 1157, 15, 299, 120, 5, 120, 174, 11, 220, 175, 136, 50, 9, 4373, 228, 8255, 5, 25249, 656, 245, 2350, 5, 4, 9837, 131, 152, 491, 18, 46151, 32, 7464, 1212, 14, 9, 6, 371, 78, 22, 625, 64, 1382, 9, 8, 168, 145, 23, 4, 1690, 15, 16, 4, 1355, 5, 28, 6, 52, 154, 462, 33, 89, 78, 285, 16, 145, 95]),\n",
+              "       list([1, 14, 47, 8, 30, 31, 7, 4, 249, 108, 7, 4, 5974, 54, 61, 369, 13, 71, 149, 14, 22, 112, 4, 2401, 311, 12, 16, 3711, 33, 75, 43, 1829, 296, 4, 86, 320, 35, 534, 19, 263, 4821, 1301, 4, 1873, 33, 89, 78, 12, 66, 16, 4, 360, 7, 4, 58, 316, 334, 11, 4, 1716, 43, 645, 662, 8, 257, 85, 1200, 42, 1228, 2578, 83, 68, 3912, 15, 36, 165, 1539, 278, 36, 69, 44076, 780, 8, 106, 14, 6905, 1338, 18, 6, 22, 12, 215, 28, 610, 40, 6, 87, 326, 23, 2300, 21, 23, 22, 12, 272, 40, 57, 31, 11, 4, 22, 47, 6, 2307, 51, 9, 170, 23, 595, 116, 595, 1352, 13, 191, 79, 638, 89, 51428, 14, 9, 8, 106, 607, 624, 35, 534, 6, 227, 7, 129, 113]),\n",
+              "       list([1, 4, 18609, 16085, 33, 2804, 4, 2040, 432, 111, 153, 103, 4, 1494, 13, 70, 131, 67, 11, 61, 15305, 744, 35, 3715, 761, 61, 5766, 452, 9214, 4, 985, 7, 64317, 59, 166, 4, 105, 216, 1239, 41, 1797, 9, 15, 7, 35, 744, 2413, 31, 8, 4, 687, 23, 4, 33929, 7339, 6, 3693, 42, 38, 39, 121, 59, 456, 10, 10, 7, 265, 12, 575, 111, 153, 159, 59, 16, 1447, 21, 25, 586, 482, 39, 4, 96, 59, 716, 12, 4, 172, 65, 9, 579, 11, 6004, 4, 1615, 5, 23005, 7, 5168, 17, 13, 7064, 12, 19, 6, 464, 31, 314, 11, 87564, 6, 719, 605, 11, 8, 202, 27, 310, 4, 3772, 3501, 8, 2722, 58, 10, 10, 537, 2116, 180, 40, 14, 413, 173, 7, 263, 112, 37, 152, 377, 4, 537, 263, 846, 579, 178, 54, 75, 71, 476, 36, 413, 263, 2504, 182, 5, 17, 75, 2306, 922, 36, 279, 131, 2895, 17, 2867, 42, 17, 35, 921, 18435, 192, 5, 1219, 3890, 19, 20523, 217, 4122, 1710, 537, 20341, 1236, 5, 736, 10, 10, 61, 403, 9, 47289, 40, 61, 4494, 5, 27, 4494, 159, 90, 263, 2311, 4319, 309, 8, 178, 5, 82, 4319, 4, 65, 15, 9225, 145, 143, 5122, 12, 7039, 537, 746, 537, 537, 15, 7979, 4, 18665, 594, 7, 5168, 94, 9096, 3987, 15242, 11, 28280, 4, 538, 7, 1795, 246, 56615, 9, 10161, 11, 635, 14, 9, 51, 408, 12, 94, 318, 1382, 12, 47, 6, 2683, 936, 5, 6307, 10197, 19, 49, 7, 4, 1885, 13699, 1118, 25, 80, 126, 842, 10, 10, 47289, 18223, 4726, 27, 4494, 11, 1550, 3633, 159, 27, 341, 29, 2733, 19, 4185, 173, 7, 90, 16376, 8, 30, 11, 4, 1784, 86, 1117, 8, 3261, 46, 11, 25837, 21, 29, 9, 2841, 23, 4, 1010, 26747, 793, 6, 13699, 1386, 1830, 10, 10, 246, 50, 9, 6, 2750, 1944, 746, 90, 29, 16376, 8, 124, 4, 882, 4, 882, 496, 27, 33029, 2213, 537, 121, 127, 1219, 130, 5, 29, 494, 8, 124, 4, 882, 496, 4, 341, 7, 27, 846, 10, 10, 29, 9, 1906, 8, 97, 6, 236, 11120, 1311, 8, 4, 23643, 7, 31, 7, 29851, 91, 22793, 3987, 70, 4, 882, 30, 579, 42, 9, 12, 32, 11, 537, 10, 10, 11, 14, 65, 44, 537, 75, 11876, 1775, 3353, 12716, 1846, 4, 11286, 7, 154, 5, 4, 518, 53, 13243, 11286, 7, 3211, 882, 11, 399, 38, 75, 257, 3807, 19, 18223, 17, 29, 456, 4, 65, 7, 27, 205, 113, 10, 10, 33058, 4, 22793, 10359, 9, 242, 4, 91, 1202, 11377, 5, 2070, 307, 22, 7, 5168, 126, 93, 40, 18223, 13, 188, 1076, 3222, 19, 4, 13465, 7, 2348, 537, 23, 53, 537, 21, 82, 40, 18223, 13, 33195, 14, 280, 13, 219, 4, 52788, 431, 758, 859, 4, 953, 1052, 12283, 7, 5991, 5, 94, 40, 25, 238, 60, 35410, 4, 15812, 804, 27767, 7, 4, 9941, 132, 8, 67, 6, 22, 15, 9, 283, 8, 5168, 14, 31, 9, 242, 955, 48, 25, 279, 22148, 23, 12, 1685, 195, 25, 238, 60, 796, 13713, 4, 671, 7, 2804, 5, 4, 559, 154, 888, 7, 726, 50, 26, 49, 7008, 15, 566, 30, 579, 21, 64, 2574]),\n",
+              "       list([1, 249, 1323, 7, 61, 113, 10, 10, 13, 1637, 14, 20, 56, 33, 2401, 18, 457, 88, 13, 2626, 1400, 45, 3171, 13, 70, 79, 49, 706, 919, 13, 16, 355, 340, 355, 1696, 96, 143, 4, 22, 32, 289, 7, 61, 369, 71, 2359, 5, 13, 16, 131, 2073, 249, 114, 249, 229, 249, 20, 13, 28, 126, 110, 13, 473, 8, 569, 61, 419, 56, 429, 6, 1513, 18, 35, 534, 95, 474, 570, 5, 25, 124, 138, 88, 12, 421, 1543, 52, 725, 6397, 61, 419, 11, 13, 1571, 15, 1543, 20, 11, 4, 22016, 5, 296, 12, 3524, 5, 15, 421, 128, 74, 233, 334, 207, 126, 224, 12, 562, 298, 2167, 1272, 7, 2601, 5, 516, 988, 43, 8, 79, 120, 15, 595, 13, 784, 25, 3171, 18, 165, 170, 143, 19, 14, 5, 7224, 6, 226, 251, 7, 61, 113])],\n",
+              "      dtype=object)"
+            ]
+          },
+          "metadata": {
+            "tags": []
+          },
+          "execution_count": 3
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "yFu1Sgxc-BiN",
+        "colab_type": "code",
+        "outputId": "9f956989-e715-44da-810a-1eed0e564a4e",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 34
+        }
+      },
+      "source": [
+        "y_train[:5]"
+      ],
+      "execution_count": 0,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": [
+              "array([1, 0, 0, 1, 0])"
+            ]
+          },
+          "metadata": {
+            "tags": []
+          },
+          "execution_count": 4
+        }
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "QQrVcyK9LWCM",
+        "colab_type": "text"
+      },
+      "source": [
+        "We can have a look on the length distribution."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "Cg2Nsch7HFYD",
+        "colab_type": "code",
+        "outputId": "bfff7934-7b36-4e05-9778-d872e7d04417",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 265
+        }
+      },
+      "source": [
+        "lengths=list(map(len,X_train))\n",
+        "plt.hist(lengths,)\n",
+        "p75=np.quantile(lengths, .75)\n",
+        "plt.axvline(p75,color='r')\n",
+        "plt.xticks([p75,0,500,1000,1500,2000,2500])\n",
+        "plt.show()\n"
+      ],
+      "execution_count": 0,
+      "outputs": [
+        {
+          "output_type": "display_data",
+          "data": {
+            "image/png": "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\nwjCQJAH/HwVaYJGRytpgAAAAAElFTkSuQmCC\n",
+            "text/plain": [
+              "<Figure size 432x288 with 1 Axes>"
+            ]
+          },
+          "metadata": {
+            "tags": []
+          }
+        }
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "l52vlKfSLgNf",
+        "colab_type": "text"
+      },
+      "source": [
+        "The following is the parameters to be used."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "of3ipEsaFFED",
+        "colab_type": "code",
+        "colab": {}
+      },
+      "source": [
+        "num_vocab=3000#max(map(max,X_train))\n",
+        "maxlen=200\n",
+        "padding='post'\n",
+        "truncating='post'\n",
+        "embed_dim=4"
+      ],
+      "execution_count": 0,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "GOCl-vaELpA1",
+        "colab_type": "text"
+      },
+      "source": [
+        "The sequences are padded so that they can be fitted to a neural network."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "DaLqedfj9xvp",
+        "colab_type": "code",
+        "outputId": "712e8b89-85a5-4954-948c-4d92d4c72cce",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 1000
+        }
+      },
+      "source": [
+        "X_train_pad=pad_sequences(X_train, maxlen=maxlen, padding=padding, truncating=truncating)\n",
+        "X_test_pad=pad_sequences(X_test, maxlen=maxlen, padding=padding, truncating=truncating)\n",
+        "\n",
+        "X_train_pad[:5]"
+      ],
+      "execution_count": 0,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": [
+              "array([[    1,    14,    22,    16,    43,   530,   973,  1622,  1385,\n",
+              "           65,   458,  4468,    66,  3941,     4,   173,    36,   256,\n",
+              "            5,    25,   100,    43,   838,   112,    50,   670, 22665,\n",
+              "            9,    35,   480,   284,     5,   150,     4,   172,   112,\n",
+              "          167, 21631,   336,   385,    39,     4,   172,  4536,  1111,\n",
+              "           17,   546,    38,    13,   447,     4,   192,    50,    16,\n",
+              "            6,   147,  2025,    19,    14,    22,     4,  1920,  4613,\n",
+              "          469,     4,    22,    71,    87,    12,    16,    43,   530,\n",
+              "           38,    76,    15,    13,  1247,     4,    22,    17,   515,\n",
+              "           17,    12,    16,   626,    18, 19193,     5,    62,   386,\n",
+              "           12,     8,   316,     8,   106,     5,     4,  2223,  5244,\n",
+              "           16,   480,    66,  3785,    33,     4,   130,    12,    16,\n",
+              "           38,   619,     5,    25,   124,    51,    36,   135,    48,\n",
+              "           25,  1415,    33,     6,    22,    12,   215,    28,    77,\n",
+              "           52,     5,    14,   407,    16,    82, 10311,     8,     4,\n",
+              "          107,   117,  5952,    15,   256,     4, 31050,     7,  3766,\n",
+              "            5,   723,    36,    71,    43,   530,   476,    26,   400,\n",
+              "          317,    46,     7,     4, 12118,  1029,    13,   104,    88,\n",
+              "            4,   381,    15,   297,    98,    32,  2071,    56,    26,\n",
+              "          141,     6,   194,  7486,    18,     4,   226,    22,    21,\n",
+              "          134,   476,    26,   480,     5,   144,    30,  5535,    18,\n",
+              "           51,    36,    28,   224,    92,    25,   104,     4,   226,\n",
+              "           65,    16],\n",
+              "       [    1,   194,  1153,   194,  8255,    78,   228,     5,     6,\n",
+              "         1463,  4369,  5012,   134,    26,     4,   715,     8,   118,\n",
+              "         1634,    14,   394,    20,    13,   119,   954,   189,   102,\n",
+              "            5,   207,   110,  3103,    21,    14,    69,   188,     8,\n",
+              "           30,    23,     7,     4,   249,   126,    93,     4,   114,\n",
+              "            9,  2300,  1523,     5,   647,     4,   116,     9,    35,\n",
+              "         8163,     4,   229,     9,   340,  1322,     4,   118,     9,\n",
+              "            4,   130,  4901,    19,     4,  1002,     5,    89,    29,\n",
+              "          952,    46,    37,     4,   455,     9,    45,    43,    38,\n",
+              "         1543,  1905,   398,     4,  1649,    26,  6853,     5,   163,\n",
+              "           11,  3215, 10156,     4,  1153,     9,   194,   775,     7,\n",
+              "         8255, 11596,   349,  2637,   148,   605, 15358,  8003,    15,\n",
+              "          123,   125,    68, 23141,  6853,    15,   349,   165,  4362,\n",
+              "           98,     5,     4,   228,     9,    43, 36893,  1157,    15,\n",
+              "          299,   120,     5,   120,   174,    11,   220,   175,   136,\n",
+              "           50,     9,  4373,   228,  8255,     5, 25249,   656,   245,\n",
+              "         2350,     5,     4,  9837,   131,   152,   491,    18, 46151,\n",
+              "           32,  7464,  1212,    14,     9,     6,   371,    78,    22,\n",
+              "          625,    64,  1382,     9,     8,   168,   145,    23,     4,\n",
+              "         1690,    15,    16,     4,  1355,     5,    28,     6,    52,\n",
+              "          154,   462,    33,    89,    78,   285,    16,   145,    95,\n",
+              "            0,     0,     0,     0,     0,     0,     0,     0,     0,\n",
+              "            0,     0],\n",
+              "       [    1,    14,    47,     8,    30,    31,     7,     4,   249,\n",
+              "          108,     7,     4,  5974,    54,    61,   369,    13,    71,\n",
+              "          149,    14,    22,   112,     4,  2401,   311,    12,    16,\n",
+              "         3711,    33,    75,    43,  1829,   296,     4,    86,   320,\n",
+              "           35,   534,    19,   263,  4821,  1301,     4,  1873,    33,\n",
+              "           89,    78,    12,    66,    16,     4,   360,     7,     4,\n",
+              "           58,   316,   334,    11,     4,  1716,    43,   645,   662,\n",
+              "            8,   257,    85,  1200,    42,  1228,  2578,    83,    68,\n",
+              "         3912,    15,    36,   165,  1539,   278,    36,    69, 44076,\n",
+              "          780,     8,   106,    14,  6905,  1338,    18,     6,    22,\n",
+              "           12,   215,    28,   610,    40,     6,    87,   326,    23,\n",
+              "         2300,    21,    23,    22,    12,   272,    40,    57,    31,\n",
+              "           11,     4,    22,    47,     6,  2307,    51,     9,   170,\n",
+              "           23,   595,   116,   595,  1352,    13,   191,    79,   638,\n",
+              "           89, 51428,    14,     9,     8,   106,   607,   624,    35,\n",
+              "          534,     6,   227,     7,   129,   113,     0,     0,     0,\n",
+              "            0,     0,     0,     0,     0,     0,     0,     0,     0,\n",
+              "            0,     0,     0,     0,     0,     0,     0,     0,     0,\n",
+              "            0,     0,     0,     0,     0,     0,     0,     0,     0,\n",
+              "            0,     0,     0,     0,     0,     0,     0,     0,     0,\n",
+              "            0,     0,     0,     0,     0,     0,     0,     0,     0,\n",
+              "            0,     0,     0,     0,     0,     0,     0,     0,     0,\n",
+              "            0,     0],\n",
+              "       [    1,     4, 18609, 16085,    33,  2804,     4,  2040,   432,\n",
+              "          111,   153,   103,     4,  1494,    13,    70,   131,    67,\n",
+              "           11,    61, 15305,   744,    35,  3715,   761,    61,  5766,\n",
+              "          452,  9214,     4,   985,     7, 64317,    59,   166,     4,\n",
+              "          105,   216,  1239,    41,  1797,     9,    15,     7,    35,\n",
+              "          744,  2413,    31,     8,     4,   687,    23,     4, 33929,\n",
+              "         7339,     6,  3693,    42,    38,    39,   121,    59,   456,\n",
+              "           10,    10,     7,   265,    12,   575,   111,   153,   159,\n",
+              "           59,    16,  1447,    21,    25,   586,   482,    39,     4,\n",
+              "           96,    59,   716,    12,     4,   172,    65,     9,   579,\n",
+              "           11,  6004,     4,  1615,     5, 23005,     7,  5168,    17,\n",
+              "           13,  7064,    12,    19,     6,   464,    31,   314,    11,\n",
+              "        87564,     6,   719,   605,    11,     8,   202,    27,   310,\n",
+              "            4,  3772,  3501,     8,  2722,    58,    10,    10,   537,\n",
+              "         2116,   180,    40,    14,   413,   173,     7,   263,   112,\n",
+              "           37,   152,   377,     4,   537,   263,   846,   579,   178,\n",
+              "           54,    75,    71,   476,    36,   413,   263,  2504,   182,\n",
+              "            5,    17,    75,  2306,   922,    36,   279,   131,  2895,\n",
+              "           17,  2867,    42,    17,    35,   921, 18435,   192,     5,\n",
+              "         1219,  3890,    19, 20523,   217,  4122,  1710,   537, 20341,\n",
+              "         1236,     5,   736,    10,    10,    61,   403,     9, 47289,\n",
+              "           40,    61,  4494,     5,    27,  4494,   159,    90,   263,\n",
+              "         2311,  4319],\n",
+              "       [    1,   249,  1323,     7,    61,   113,    10,    10,    13,\n",
+              "         1637,    14,    20,    56,    33,  2401,    18,   457,    88,\n",
+              "           13,  2626,  1400,    45,  3171,    13,    70,    79,    49,\n",
+              "          706,   919,    13,    16,   355,   340,   355,  1696,    96,\n",
+              "          143,     4,    22,    32,   289,     7,    61,   369,    71,\n",
+              "         2359,     5,    13,    16,   131,  2073,   249,   114,   249,\n",
+              "          229,   249,    20,    13,    28,   126,   110,    13,   473,\n",
+              "            8,   569,    61,   419,    56,   429,     6,  1513,    18,\n",
+              "           35,   534,    95,   474,   570,     5,    25,   124,   138,\n",
+              "           88,    12,   421,  1543,    52,   725,  6397,    61,   419,\n",
+              "           11,    13,  1571,    15,  1543,    20,    11,     4, 22016,\n",
+              "            5,   296,    12,  3524,     5,    15,   421,   128,    74,\n",
+              "          233,   334,   207,   126,   224,    12,   562,   298,  2167,\n",
+              "         1272,     7,  2601,     5,   516,   988,    43,     8,    79,\n",
+              "          120,    15,   595,    13,   784,    25,  3171,    18,   165,\n",
+              "          170,   143,    19,    14,     5,  7224,     6,   226,   251,\n",
+              "            7,    61,   113,     0,     0,     0,     0,     0,     0,\n",
+              "            0,     0,     0,     0,     0,     0,     0,     0,     0,\n",
+              "            0,     0,     0,     0,     0,     0,     0,     0,     0,\n",
+              "            0,     0,     0,     0,     0,     0,     0,     0,     0,\n",
+              "            0,     0,     0,     0,     0,     0,     0,     0,     0,\n",
+              "            0,     0,     0,     0,     0,     0,     0,     0,     0,\n",
+              "            0,     0]], dtype=int32)"
+            ]
+          },
+          "metadata": {
+            "tags": []
+          },
+          "execution_count": 7
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "BBl65s1vIJDA",
+        "colab_type": "code",
+        "outputId": "dfa582b8-5247-4529-ff63-50770c25c41b",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 1000
+        }
+      },
+      "source": [
+        "model=Sequential()\n",
+        "model.add(Embedding(input_dim=num_vocab, output_dim=embed_dim,input_length=maxlen))\n",
+        "\n",
+        "model.add(Conv1D(64, 5))\n",
+        "model.add(MaxPooling1D(10,2))\n",
+        "model.add(Dropout(0.9))\n",
+        "model.add(BatchNormalization())\n",
+        "model.add(Bidirectional(LSTM(32, return_sequences=True)))\n",
+        "model.add(Dropout(0.9))\n",
+        "model.add(Bidirectional(LSTM(16, return_sequences=False)))\n",
+        "model.add(BatchNormalization())\n",
+        "model.add(Dropout(0.7))\n",
+        "model.add(Dense(20))\n",
+        "model.add(BatchNormalization())\n",
+        "model.add(Dense(1, activation='sigmoid'))\n",
+        "\n",
+        "\n",
+        "model.compile(loss='binary_crossentropy', metrics=['acc'], optimizer=Adam(lr=0.01, epsilon=1e-10))\n",
+        "model.summary()"
+      ],
+      "execution_count": 0,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "text": [
+            "WARNING:tensorflow:From /usr/local/lib/python3.6/dist-packages/keras/backend/tensorflow_backend.py:66: The name tf.get_default_graph is deprecated. Please use tf.compat.v1.get_default_graph instead.\n",
+            "\n",
+            "WARNING:tensorflow:From /usr/local/lib/python3.6/dist-packages/keras/backend/tensorflow_backend.py:541: The name tf.placeholder is deprecated. Please use tf.compat.v1.placeholder instead.\n",
+            "\n",
+            "WARNING:tensorflow:From /usr/local/lib/python3.6/dist-packages/keras/backend/tensorflow_backend.py:4432: The name tf.random_uniform is deprecated. Please use tf.random.uniform instead.\n",
+            "\n",
+            "WARNING:tensorflow:From /usr/local/lib/python3.6/dist-packages/keras/backend/tensorflow_backend.py:4267: The name tf.nn.max_pool is deprecated. Please use tf.nn.max_pool2d instead.\n",
+            "\n",
+            "WARNING:tensorflow:From /usr/local/lib/python3.6/dist-packages/keras/backend/tensorflow_backend.py:148: The name tf.placeholder_with_default is deprecated. Please use tf.compat.v1.placeholder_with_default instead.\n",
+            "\n",
+            "WARNING:tensorflow:From /usr/local/lib/python3.6/dist-packages/keras/backend/tensorflow_backend.py:3733: calling dropout (from tensorflow.python.ops.nn_ops) with keep_prob is deprecated and will be removed in a future version.\n",
+            "Instructions for updating:\n",
+            "Please use `rate` instead of `keep_prob`. Rate should be set to `rate = 1 - keep_prob`.\n",
+            "WARNING:tensorflow:Large dropout rate: 0.9 (>0.5). In TensorFlow 2.x, dropout() uses dropout rate instead of keep_prob. Please ensure that this is intended.\n",
+            "WARNING:tensorflow:Large dropout rate: 0.9 (>0.5). In TensorFlow 2.x, dropout() uses dropout rate instead of keep_prob. Please ensure that this is intended.\n",
+            "WARNING:tensorflow:Large dropout rate: 0.7 (>0.5). In TensorFlow 2.x, dropout() uses dropout rate instead of keep_prob. Please ensure that this is intended.\n",
+            "WARNING:tensorflow:From /usr/local/lib/python3.6/dist-packages/keras/optimizers.py:793: The name tf.train.Optimizer is deprecated. Please use tf.compat.v1.train.Optimizer instead.\n",
+            "\n",
+            "WARNING:tensorflow:From /usr/local/lib/python3.6/dist-packages/keras/backend/tensorflow_backend.py:3657: The name tf.log is deprecated. Please use tf.math.log instead.\n",
+            "\n",
+            "WARNING:tensorflow:From /usr/local/lib/python3.6/dist-packages/tensorflow_core/python/ops/nn_impl.py:183: where (from tensorflow.python.ops.array_ops) is deprecated and will be removed in a future version.\n",
+            "Instructions for updating:\n",
+            "Use tf.where in 2.0, which has the same broadcast rule as np.where\n",
+            "Model: \"sequential_1\"\n",
+            "_________________________________________________________________\n",
+            "Layer (type)                 Output Shape              Param #   \n",
+            "=================================================================\n",
+            "embedding_1 (Embedding)      (None, 200, 4)            12000     \n",
+            "_________________________________________________________________\n",
+            "conv1d_1 (Conv1D)            (None, 196, 64)           1344      \n",
+            "_________________________________________________________________\n",
+            "max_pooling1d_1 (MaxPooling1 (None, 94, 64)            0         \n",
+            "_________________________________________________________________\n",
+            "dropout_1 (Dropout)          (None, 94, 64)            0         \n",
+            "_________________________________________________________________\n",
+            "batch_normalization_1 (Batch (None, 94, 64)            256       \n",
+            "_________________________________________________________________\n",
+            "bidirectional_1 (Bidirection (None, 94, 64)            24832     \n",
+            "_________________________________________________________________\n",
+            "dropout_2 (Dropout)          (None, 94, 64)            0         \n",
+            "_________________________________________________________________\n",
+            "bidirectional_2 (Bidirection (None, 32)                10368     \n",
+            "_________________________________________________________________\n",
+            "batch_normalization_2 (Batch (None, 32)                128       \n",
+            "_________________________________________________________________\n",
+            "dropout_3 (Dropout)          (None, 32)                0         \n",
+            "_________________________________________________________________\n",
+            "dense_1 (Dense)              (None, 20)                660       \n",
+            "_________________________________________________________________\n",
+            "batch_normalization_3 (Batch (None, 20)                80        \n",
+            "_________________________________________________________________\n",
+            "dense_2 (Dense)              (None, 1)                 21        \n",
+            "=================================================================\n",
+            "Total params: 49,689\n",
+            "Trainable params: 49,457\n",
+            "Non-trainable params: 232\n",
+            "_________________________________________________________________\n"
+          ],
+          "name": "stdout"
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "GH-LjYnpIqzS",
+        "colab_type": "code",
+        "outputId": "54179aaa-4160-47df-9554-5815ee7a90d2",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 1000
+        }
+      },
+      "source": [
+        "model.fit(X_train_pad, \n",
+        "          y_train, \n",
+        "          validation_data=(X_test_pad, y_test), \n",
+        "          callbacks=[ReduceLROnPlateau(monitor='val_acc', \n",
+        "                                       patience=3, \n",
+        "                                       verbose=1),\n",
+        "                     EarlyStopping(monitor='val_acc',\n",
+        "                                   patience=10,\n",
+        "                                   verbose=1)],\n",
+        "          epochs=100,\n",
+        "          batch_size=1024,\n",
+        "          workers=4)"
+      ],
+      "execution_count": 0,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "text": [
+            "WARNING:tensorflow:From /usr/local/lib/python3.6/dist-packages/keras/backend/tensorflow_backend.py:1033: The name tf.assign_add is deprecated. Please use tf.compat.v1.assign_add instead.\n",
+            "\n",
+            "WARNING:tensorflow:From /usr/local/lib/python3.6/dist-packages/keras/backend/tensorflow_backend.py:1020: The name tf.assign is deprecated. Please use tf.compat.v1.assign instead.\n",
+            "\n",
+            "WARNING:tensorflow:From /usr/local/lib/python3.6/dist-packages/keras/backend/tensorflow_backend.py:3005: The name tf.Session is deprecated. Please use tf.compat.v1.Session instead.\n",
+            "\n",
+            "Train on 25000 samples, validate on 25000 samples\n",
+            "Epoch 1/100\n",
+            "WARNING:tensorflow:From /usr/local/lib/python3.6/dist-packages/keras/backend/tensorflow_backend.py:190: The name tf.get_default_session is deprecated. Please use tf.compat.v1.get_default_session instead.\n",
+            "\n",
+            "WARNING:tensorflow:From /usr/local/lib/python3.6/dist-packages/keras/backend/tensorflow_backend.py:197: The name tf.ConfigProto is deprecated. Please use tf.compat.v1.ConfigProto instead.\n",
+            "\n",
+            "WARNING:tensorflow:From /usr/local/lib/python3.6/dist-packages/keras/backend/tensorflow_backend.py:207: The name tf.global_variables is deprecated. Please use tf.compat.v1.global_variables instead.\n",
+            "\n",
+            "WARNING:tensorflow:From /usr/local/lib/python3.6/dist-packages/keras/backend/tensorflow_backend.py:216: The name tf.is_variable_initialized is deprecated. Please use tf.compat.v1.is_variable_initialized instead.\n",
+            "\n",
+            "WARNING:tensorflow:From /usr/local/lib/python3.6/dist-packages/keras/backend/tensorflow_backend.py:223: The name tf.variables_initializer is deprecated. Please use tf.compat.v1.variables_initializer instead.\n",
+            "\n",
+            "25000/25000 [==============================] - 40s 2ms/step - loss: 0.7253 - acc: 0.5035 - val_loss: 0.6963 - val_acc: 0.4995\n",
+            "Epoch 2/100\n",
+            "25000/25000 [==============================] - 29s 1ms/step - loss: 0.6965 - acc: 0.5022 - val_loss: 0.6968 - val_acc: 0.4999\n",
+            "Epoch 3/100\n",
+            "25000/25000 [==============================] - 29s 1ms/step - loss: 0.6950 - acc: 0.5034 - val_loss: 0.6930 - val_acc: 0.5000\n",
+            "Epoch 4/100\n",
+            "25000/25000 [==============================] - 29s 1ms/step - loss: 0.6938 - acc: 0.5088 - val_loss: 0.7026 - val_acc: 0.5004\n",
+            "Epoch 5/100\n",
+            "25000/25000 [==============================] - 29s 1ms/step - loss: 0.6416 - acc: 0.6340 - val_loss: 1.6854 - val_acc: 0.5586\n",
+            "Epoch 6/100\n",
+            "25000/25000 [==============================] - 29s 1ms/step - loss: 0.5179 - acc: 0.7609 - val_loss: 0.9511 - val_acc: 0.6989\n",
+            "Epoch 7/100\n",
+            "25000/25000 [==============================] - 29s 1ms/step - loss: 0.4727 - acc: 0.7908 - val_loss: 0.8837 - val_acc: 0.7277\n",
+            "Epoch 8/100\n",
+            "25000/25000 [==============================] - 29s 1ms/step - loss: 0.4405 - acc: 0.8139 - val_loss: 0.6028 - val_acc: 0.7678\n",
+            "Epoch 9/100\n",
+            "25000/25000 [==============================] - 29s 1ms/step - loss: 0.4043 - acc: 0.8364 - val_loss: 0.6211 - val_acc: 0.7279\n",
+            "Epoch 10/100\n",
+            "25000/25000 [==============================] - 29s 1ms/step - loss: 0.3732 - acc: 0.8486 - val_loss: 0.4323 - val_acc: 0.8018\n",
+            "Epoch 11/100\n",
+            "25000/25000 [==============================] - 29s 1ms/step - loss: 0.3621 - acc: 0.8543 - val_loss: 0.4281 - val_acc: 0.8165\n",
+            "Epoch 12/100\n",
+            "25000/25000 [==============================] - 29s 1ms/step - loss: 0.3594 - acc: 0.8574 - val_loss: 0.4474 - val_acc: 0.8114\n",
+            "Epoch 13/100\n",
+            "25000/25000 [==============================] - 29s 1ms/step - loss: 0.3530 - acc: 0.8625 - val_loss: 0.4995 - val_acc: 0.7428\n",
+            "Epoch 14/100\n",
+            "25000/25000 [==============================] - 29s 1ms/step - loss: 0.3408 - acc: 0.8690 - val_loss: 0.4036 - val_acc: 0.8231\n",
+            "Epoch 15/100\n",
+            "25000/25000 [==============================] - 29s 1ms/step - loss: 0.3289 - acc: 0.8718 - val_loss: 0.4027 - val_acc: 0.8344\n",
+            "Epoch 16/100\n",
+            "25000/25000 [==============================] - 29s 1ms/step - loss: 0.3195 - acc: 0.8780 - val_loss: 0.4137 - val_acc: 0.8218\n",
+            "Epoch 17/100\n",
+            "25000/25000 [==============================] - 29s 1ms/step - loss: 0.3094 - acc: 0.8805 - val_loss: 0.4327 - val_acc: 0.8292\n",
+            "Epoch 18/100\n",
+            "25000/25000 [==============================] - 29s 1ms/step - loss: 0.3075 - acc: 0.8806 - val_loss: 0.4007 - val_acc: 0.8282\n",
+            "\n",
+            "Epoch 00018: ReduceLROnPlateau reducing learning rate to 0.0009999999776482583.\n",
+            "Epoch 19/100\n",
+            "25000/25000 [==============================] - 29s 1ms/step - loss: 0.2925 - acc: 0.8898 - val_loss: 0.3955 - val_acc: 0.8305\n",
+            "Epoch 20/100\n",
+            "25000/25000 [==============================] - 29s 1ms/step - loss: 0.2903 - acc: 0.8927 - val_loss: 0.3897 - val_acc: 0.8331\n",
+            "Epoch 21/100\n",
+            "25000/25000 [==============================] - 29s 1ms/step - loss: 0.2870 - acc: 0.8934 - val_loss: 0.3921 - val_acc: 0.8365\n",
+            "Epoch 22/100\n",
+            "25000/25000 [==============================] - 29s 1ms/step - loss: 0.2861 - acc: 0.8942 - val_loss: 0.3899 - val_acc: 0.8362\n",
+            "Epoch 23/100\n",
+            "25000/25000 [==============================] - 29s 1ms/step - loss: 0.2790 - acc: 0.8975 - val_loss: 0.3905 - val_acc: 0.8381\n",
+            "Epoch 24/100\n",
+            "25000/25000 [==============================] - 29s 1ms/step - loss: 0.2821 - acc: 0.8956 - val_loss: 0.3910 - val_acc: 0.8380\n",
+            "Epoch 25/100\n",
+            "25000/25000 [==============================] - 29s 1ms/step - loss: 0.2798 - acc: 0.8954 - val_loss: 0.3865 - val_acc: 0.8364\n",
+            "Epoch 26/100\n",
+            "25000/25000 [==============================] - 29s 1ms/step - loss: 0.2770 - acc: 0.8969 - val_loss: 0.3955 - val_acc: 0.8381\n",
+            "\n",
+            "Epoch 00026: ReduceLROnPlateau reducing learning rate to 9.999999310821295e-05.\n",
+            "Epoch 27/100\n",
+            "25000/25000 [==============================] - 29s 1ms/step - loss: 0.2757 - acc: 0.8979 - val_loss: 0.3932 - val_acc: 0.8377\n",
+            "Epoch 28/100\n",
+            "25000/25000 [==============================] - 29s 1ms/step - loss: 0.2736 - acc: 0.8994 - val_loss: 0.3938 - val_acc: 0.8378\n",
+            "Epoch 29/100\n",
+            "25000/25000 [==============================] - 29s 1ms/step - loss: 0.2754 - acc: 0.8973 - val_loss: 0.3921 - val_acc: 0.8376\n",
+            "\n",
+            "Epoch 00029: ReduceLROnPlateau reducing learning rate to 9.999999019782991e-06.\n",
+            "Epoch 30/100\n",
+            "25000/25000 [==============================] - 29s 1ms/step - loss: 0.2760 - acc: 0.8966 - val_loss: 0.3919 - val_acc: 0.8378\n",
+            "Epoch 31/100\n",
+            "25000/25000 [==============================] - 29s 1ms/step - loss: 0.2730 - acc: 0.8992 - val_loss: 0.3920 - val_acc: 0.8378\n",
+            "Epoch 32/100\n",
+            "25000/25000 [==============================] - 29s 1ms/step - loss: 0.2799 - acc: 0.8972 - val_loss: 0.3919 - val_acc: 0.8378\n",
+            "\n",
+            "Epoch 00032: ReduceLROnPlateau reducing learning rate to 9.99999883788405e-07.\n",
+            "Epoch 33/100\n",
+            "25000/25000 [==============================] - 29s 1ms/step - loss: 0.2757 - acc: 0.8967 - val_loss: 0.3920 - val_acc: 0.8378\n",
+            "Epoch 00033: early stopping\n"
+          ],
+          "name": "stdout"
+        },
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": [
+              "<keras.callbacks.History at 0x7f5740987710>"
+            ]
+          },
+          "metadata": {
+            "tags": []
+          },
+          "execution_count": 9
+        }
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "m0zP8nP8MGkx",
+        "colab_type": "text"
+      },
+      "source": [
+        "The performance of the neural network is shown below."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "p4x6-J03OYf9",
+        "colab_type": "code",
+        "outputId": "4e4ae36e-1974-40d1-dd80-4b879112f1d0",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 85
+        }
+      },
+      "source": [
+        "print(\"Accuracy for train set is \", model.evaluate(X_train_pad, y_train, batch_size=1024, use_multiprocessing=True)[1])\n",
+        "print(\"Accuracy for test set is \", model.evaluate(X_test_pad, y_test, batch_size=1024, use_multiprocessing=True)[1])\n"
+      ],
+      "execution_count": 0,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "text": [
+            "25000/25000 [==============================] - 8s 310us/step\n",
+            "Accuracy for train set is  0.8922799998474121\n",
+            "25000/25000 [==============================] - 8s 310us/step\n",
+            "Accuracy for test set is  0.8377600003433228\n"
+          ],
+          "name": "stdout"
+        }
+      ]
+    }
+  ]
+}
